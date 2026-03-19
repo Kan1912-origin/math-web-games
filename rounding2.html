@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>四捨五入星際闖關測驗</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sar: env(safe-area-inset-right);
+            --sab: env(safe-area-inset-bottom);
+            --sal: env(safe-area-inset-left);
+        }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: radial-gradient(circle at center, #1e1b4b, #020617);
+            min-height: 100vh;
+            color: white;
+            margin: 0;
+            padding: var(--sat) var(--sar) var(--sab) var(--sal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .font-kids { font-family: 'Fredoka', 'Noto Sans TC', sans-serif; }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            width: 100%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .option-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            touch-action: manipulation;
+        }
+        
+        @media (hover: hover) {
+            .option-btn:hover:not(:disabled) {
+                background: rgba(255, 255, 255, 0.15);
+                transform: translateX(8px);
+                border-color: #818cf8;
+            }
+        }
+
+        .option-btn:active {
+            transform: scale(0.98);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #a855f7);
+            transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .floating { animation: floating 3s ease-in-out infinite; }
+        @keyframes floating {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+
+        /* 滾動條美化 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="game-container" class="w-full max-w-xl mx-auto flex flex-col items-center">
+        
+        <!-- 開始畫面 -->
+        <div id="start-screen" class="glass-card p-8 md:p-12 text-center animate-in fade-in zoom-in duration-500">
+            <div class="mb-8 floating">
+                <i class="fa-solid fa-rocket text-6xl md:text-8xl text-indigo-400 drop-shadow-[0_0_15px_rgba(129,140,248,0.5)]"></i>
+            </div>
+            <h1 class="text-3xl md:text-5xl font-bold mb-4 font-kids tracking-tight">星際估算大考驗</h1>
+            <p class="text-indigo-200 mb-10 text-base md:text-lg leading-relaxed">
+                數字黑洞正在逼近！<br>運用你的知識修正航道，拯救銀河系！
+            </p>
+            <button onclick="startGame()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 px-10 rounded-2xl text-xl shadow-xl transition-all active:scale-95">
+                執行任務 <i class="fa-solid fa-play ml-2"></i>
+            </button>
+        </div>
+
+        <!-- 測驗畫面 -->
+        <div id="quiz-screen" class="glass-card p-6 md:p-8 hidden">
+            <div class="flex justify-between items-center mb-5">
+                <div class="flex flex-col">
+                    <span id="question-count" class="text-indigo-300 text-sm font-bold uppercase tracking-wider">任務 1 / 10</span>
+                    <div id="score-display" class="text-yellow-400 font-black text-xl">0 PTS</div>
+                </div>
+                <div class="h-12 w-12 bg-indigo-900/40 rounded-full flex items-center justify-center border border-indigo-500/30">
+                    <i class="fa-solid fa-satellite text-indigo-300"></i>
+                </div>
+            </div>
+            
+            <div class="progress-bar mb-8">
+                <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+            </div>
+
+            <div id="question-box" class="space-y-6">
+                <h2 id="question-text" class="text-xl md:text-2xl font-bold leading-tight min-h-[4rem]">
+                    掃描深空中...
+                </h2>
+                
+                <div id="options-container" class="grid grid-cols-1 gap-3 md:gap-4">
+                    <!-- 選項會在此動態生成 -->
+                </div>
+            </div>
+
+            <div id="feedback-area" class="mt-6">
+                <div id="feedback" class="hidden p-4 rounded-2xl text-center font-bold mb-4 animate-in slide-in-from-bottom-4"></div>
+                
+                <button id="next-btn" onclick="nextQuestion()" class="hidden w-full bg-white text-indigo-900 hover:bg-indigo-100 py-4 rounded-2xl font-black text-lg transition shadow-lg">
+                    下一個座標 <i class="fa-solid fa-chevron-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 結果畫面 -->
+        <div id="result-screen" class="glass-card p-8 md:p-12 text-center hidden">
+            <div class="mb-6">
+                <i class="fa-solid fa-trophy text-6xl text-yellow-400 drop-shadow-lg"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-indigo-200 mb-2 uppercase">任務簡報紀錄</h2>
+            <div id="final-rank" class="text-4xl md:text-5xl font-black text-white mb-6 font-kids">鑑定中...</div>
+            
+            <div class="bg-black/20 rounded-3xl p-6 mb-8 border border-white/5">
+                <p class="text-indigo-300 text-sm mb-1">任務達成率</p>
+                <div class="text-5xl font-black text-yellow-400"><span id="final-score">0</span>%</div>
+            </div>
+
+            <p id="result-message" class="text-indigo-100 mb-10 italic text-lg leading-relaxed"></p>
+            
+            <button onclick="location.reload()" class="w-full bg-indigo-600 text-white font-bold py-4 px-8 rounded-2xl hover:bg-indigo-500 transition-all shadow-xl">
+                重新開啟任務
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentQ = 0;
+        let score = 0;
+        let canAnswer = true;
+        const totalQuestions = 10;
+        let quizData = [];
+
+        const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const fmt = (num) => num.toLocaleString();
+
+        function generateQuiz() {
+            const types = ['basic', 'ten', 'million', 'billion', 'rule'];
+            const data = [];
+
+            for(let i=0; i<totalQuestions; i++) {
+                const type = types[i % types.length];
+                let question = {};
+
+                if (type === 'basic') {
+                    const num = rand(11, 99);
+                    const unit = num % 10;
+                    const correct = unit >= 5 ? Math.ceil(num / 10) * 10 : Math.floor(num / 10) * 10;
+                    question = {
+                        q: `導航修正：將數字 ${num} 四捨五入到「十位」，結果是多少？`,
+                        o: shuffle([correct, correct + 10, correct - 10, 0]),
+                        a: correct,
+                        tip: `觀察個位數 ${unit}，${unit >= 5 ? '大於等於 5 要進位' : '小於 5 記得捨去'}！`
+                    };
+                } 
+                else if (type === 'ten') {
+                    const base = rand(10, 99) * 10 + rand(1, 9);
+                    const unit = base % 10;
+                    const correct = unit >= 5 ? "進位 (+1)" : "捨去 (不變)";
+                    question = {
+                        q: `能源監測：數字 ${base} 的個位是 ${unit}，四捨五入到「十位」時應該要？`,
+                        o: ["進位 (+1)", "捨去 (不變)", "變成 0", "直接消失"],
+                        a: correct,
+                        tip: `5, 6, 7, 8, 9 是進位組；0, 1, 2, 3, 4 是捨去組。`
+                    };
+                }
+                else if (type === 'million') {
+                    const raw = rand(1, 9) * 1000000 + rand(0, 9) * 100000;
+                    const millionDigit = Math.floor(raw / 1000000);
+                    const checkDigit = Math.floor((raw % 1000000) / 100000);
+                    const correct = checkDigit >= 5 ? (millionDigit + 1) * 1000000 : millionDigit * 1000000;
+                    
+                    question = {
+                        q: `物資掃描：太空站偵測到 ${fmt(raw)} 單位燃料，四捨五入到「百萬位」大約是多少？`,
+                        o: shuffle([fmt(correct), fmt(correct + 1000000), fmt(correct - 1000000), "0"]),
+                        a: fmt(correct),
+                        tip: `鎖定百萬位 ${millionDigit}，看它右邊的「十萬位」數字 ${checkDigit}。`
+                    };
+                }
+                else if (type === 'billion') {
+                    const raw = rand(1, 9) * 1000000000 + rand(1, 9) * 100000000;
+                    const billionDigit = Math.floor(raw / 1000000000);
+                    const checkDigit = Math.floor((raw % 1000000000) / 100000000);
+                    const correct = checkDigit >= 5 ? (billionDigit + 1) * 1000000000 : billionDigit * 1000000000;
+
+                    question = {
+                        q: `行星估值：這顆行星的資源價值約 ${fmt(raw)} 元，四捨五入到「十億位」是多少？`,
+                        o: shuffle([`${correct/1000000000}0 億`, `${(correct/1000000000)} 億`, "50 億", "10 億"]),
+                        a: `${(correct/1000000000)} 億`,
+                        tip: `十億位右邊是「億位」，數字是 ${checkDigit}，${checkDigit >= 5 ? '達成進位標準！' : '未達標準，捨去。'}`
+                    };
+                }
+                else {
+                    const rules = [
+                        { q: "「口訣秘籍」：四捨五入時，要觀察目標數位的哪一邊？", o: ["左邊", "右邊", "上面", "下面"], a: "右邊" },
+                        { q: "「空間法則」：四捨五入後，目標數位「右邊」的所有數字會變成？", o: ["維持原樣", "通通變 0", "隨機數字", "全部變 1"], a: "通通變 0" },
+                        { q: "「臨界判定」：如果右邊鄰居剛好是 5，代表？", o: ["剛好在山頂，要進位", "還沒上山，要捨去", "不需要處理", "直接消失"], a: "剛好在山頂，要進位" }
+                    ];
+                    const r = rules[rand(0, rules.length-1)];
+                    question = { q: r.q, o: shuffle(r.o), a: r.a, tip: "回想魔法口訣：5 以上進位，4 以下捨去！" };
+                }
+                data.push(question);
+            }
+            return data;
+        }
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function startGame() {
+            quizData = generateQuiz();
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            canAnswer = true;
+            const qData = quizData[currentQ];
+            document.getElementById('question-count').innerText = `任務 ${currentQ + 1} / ${totalQuestions}`;
+            document.getElementById('progress-fill').style.width = `${((currentQ + 1) / totalQuestions) * 100}%`;
+            document.getElementById('question-text').innerText = qData.q;
+            
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+            
+            qData.o.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn w-full text-left p-4 rounded-2xl font-bold bg-white/5 flex items-center';
+                btn.innerHTML = `
+                    <span class="flex-shrink-0 w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-200 flex items-center justify-center mr-4 border border-indigo-500/20">
+                        ${String.fromCharCode(65 + index)}
+                    </span> 
+                    <span class="text-base md:text-lg">${opt}</span>
+                `;
+                btn.onclick = () => checkAnswer(opt, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('feedback').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+        }
+
+        function checkAnswer(selected, btn) {
+            if (!canAnswer) return;
+            canAnswer = false;
+            
+            const qData = quizData[currentQ];
+            const feedback = document.getElementById('feedback');
+            const btns = document.getElementsByClassName('option-btn');
+            
+            feedback.classList.remove('hidden');
+            
+            if (selected === qData.a) {
+                score += 10;
+                document.getElementById('score-display').innerText = `${score} PTS`;
+                feedback.className = 'p-4 rounded-2xl mb-4 text-center font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/50';
+                feedback.innerHTML = `<i class="fa-solid fa-circle-check mr-2"></i> 導航正確！目標已鎖定。`;
+                btn.classList.add('bg-emerald-500/30', 'border-emerald-500');
+            } else {
+                feedback.className = 'p-4 rounded-2xl mb-4 text-center font-bold bg-rose-500/20 text-rose-400 border border-rose-500/50';
+                feedback.innerHTML = `<i class="fa-solid fa-circle-xmark mr-2"></i> 運算偏差！正確應為 ${qData.a}<br><span class="text-xs md:text-sm font-normal opacity-80">${qData.tip}</span>`;
+                btn.classList.add('bg-rose-500/30', 'border-rose-500');
+                
+                // 顯示正確答案
+                Array.from(btns).forEach(b => {
+                    if (b.innerText.includes(qData.a)) {
+                        b.classList.add('border-emerald-500/50', 'bg-emerald-500/10');
+                    }
+                });
+            }
+            
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentQ++;
+            if (currentQ < totalQuestions) {
+                showQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        function showResult() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = score;
+            
+            let rank = "";
+            let msg = "";
+            
+            if (score >= 90) {
+                rank = "超時空領航員";
+                msg = "簡直完美！你對數字的直覺如同超新星爆炸般閃耀。";
+            } else if (score >= 60) {
+                rank = "資深飛行員";
+                msg = "表現不俗！銀河系大部分區域已經安全，繼續精進！";
+            } else {
+                rank = "星際練習生";
+                msg = "航向似乎有些混亂？多練習幾次，你一定能掌握數字規律！";
+            }
+            
+            document.getElementById('final-rank').innerText = rank;
+            document.getElementById('result-message').innerText = msg;
+        }
+    </script>
+</body>
+</html>
